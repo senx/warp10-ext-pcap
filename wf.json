@@ -12,5 +12,8 @@
     "WarpScript",
     "pcap",
     "network"
+  ],
+  "conf": [
+    "warpscript.extension.pcap = io.warp10.script.ext.pcap.PCapWarpScriptExtension"
   ]
 }
