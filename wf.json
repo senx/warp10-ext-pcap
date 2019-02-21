@@ -1,5 +1,6 @@
 {
   "type": "ext",
+  "repoUrl": "https://dl.bintray.com/senx/maven/",
   "group": "io.warp10",
   "artifact": "warp10-ext-pcap",
   "version": "0.1.0",
