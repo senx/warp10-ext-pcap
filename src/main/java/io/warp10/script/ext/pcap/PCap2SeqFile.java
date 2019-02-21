@@ -1,6 +1,8 @@
 package io.warp10.script.ext.pcap;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.EnumSet;
 
@@ -16,6 +18,7 @@ import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.SequenceFile.CompressionType;
 import org.apache.hadoop.io.SequenceFile.Metadata;
 import org.apache.hadoop.io.compress.DefaultCodec;
+import org.junit.Test;
 
 /**
  * Converts a libpcap file into a SequenceFile of records
@@ -23,14 +26,18 @@ import org.apache.hadoop.io.compress.DefaultCodec;
 public class PCap2SeqFile {
   
   
-  public static void convert(Configuration conf, Path inPath, Path outPath) throws IOException {
+  public static void convert(Configuration conf, Path inPath, Path outPath, boolean append) throws IOException {
     FileContext fc = FileContext.getFileContext(conf);
     FileSystem fs = inPath.getFileSystem(conf);
     
     FSDataInputStream in = fs.open(inPath);
 
     EnumSet<CreateFlag> flags = EnumSet.of(CreateFlag.CREATE);
-    flags.add(CreateFlag.OVERWRITE);
+    if (append) {
+      flags.add(CreateFlag.APPEND);
+    } else {
+      flags.add(CreateFlag.OVERWRITE);
+    }
     
     SequenceFile.Writer sfwriter = SequenceFile.createWriter(fc,
         conf,
@@ -92,6 +99,11 @@ public class PCap2SeqFile {
       //
       
       len = in.read(recordHeader, 0, recordHeader.length);
+      
+      if (len < 0) {
+        eof = true;
+        continue;
+      }
       
       if (recordHeader.length != len) {
         throw new IOException("Error reading record header.");        
@@ -156,6 +168,32 @@ public class PCap2SeqFile {
   }
   
   public static void main(String[] args) throws Exception {
-    convert(new Configuration(), new Path(args[0]), new Path(args[1]));
+    if (1 == args.length) {
+      // Only a single argument, it is the name of the SequenceFile to create, we will read the input
+      // pcap names from stdin
+      BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+      boolean first = true;
+      while(true) {
+        String line = br.readLine();
+        
+        if (null == line) {
+          break;
+        }
+        
+        if (first) {
+          convert(new Configuration(), new Path(line), new Path(args[0]), !first);
+          first = false;
+        } else {
+          convert(new Configuration(), new Path(line), new Path(args[0]), !first);        
+        }
+      }
+      br.close();
+    } else if (args.length > 2) {
+      for (int i = 0; i < args.length - 1; i++) {
+        convert(new Configuration(), new Path(args[i]), new Path(args[args.length - 1]), i > 0);        
+      }
+    } else {
+      convert(new Configuration(), new Path(args[0]), new Path(args[1]), false);
+    } 
   }
 }
