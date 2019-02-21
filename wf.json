@@ -2,7 +2,7 @@
   "type": "ext",
   "group": "io.warp10",
   "artifact": "warp10-ext-pcap",
-  "version": "0.1.0',
+  "version": "0.1.0",
   "description": "WarpScript™ PCap Extension",
   "author": "SenX",
   "email": "contact@senx.io",
