@@ -1,0 +1,16 @@
+{
+  "type": "ext",
+  "group": "io.warp10",
+  "artifact": "warp10-ext-pcap",
+  "version": "0.1.0',
+  "description": "WarpScript™ PCap Extension",
+  "author": "SenX",
+  "email": "contact@senx.io",
+  "license": "Apache 2.0",
+  "git": "https://github.com/senx/warp10-ext-pcap",
+  "tags": [
+    "WarpScript",
+    "pcap",
+    "network"
+  ]
+}

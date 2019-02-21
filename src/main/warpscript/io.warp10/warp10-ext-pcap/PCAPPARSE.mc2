@@ -1,0 +1,29 @@
+{
+  'name' 'PCAPPARSE'
+  'desc' 
+  <'
+Parses a packet captured using [libpcap](https://www.tcpdump.org/).
+
+The parsing leaves on the stack a map containing the various elements which were correctly parsed.
+
+For the time being, the elements which can be parsed are the PCap fields from the various headers and the following protocols: *Ethernet*, *IPv4*, *ICMP*, *UDP*, *TCP*. Please refer to the [Fields.java](https://github.com/senx/warp10-ext-pcap/blob/master/src/main/java/io/warp10/script/ext/pcap/Fields.java) source file to learn the various keys used in the result map.
+  '>
+  'sig' [ [ [ 'packet:BYTES' 'rechdr:BYTES' 'globalhdr:BYTES' ] [ 'content:MAP' ] ] ]
+  'params' {
+    'packet' 'Raw bytes of the captured packet.'
+    'rechdr' 'Record header as a byte array.'
+    'globalhdr' 'PCap file global header as a byte array.'
+  }
+  'examples' [
+  ]
+} 'info' STORE
+
+<%
+  !$info INFO
+  SAVE 'context' STORE
+    <% 'PCAPPARSE' EVAL %> <% %> <% %> TRY
+  $context RESTORE
+%>
+'macro' STORE
+
+$macro
