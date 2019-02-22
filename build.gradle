@@ -56,7 +56,7 @@ def getVersionName(String revision) {
 
 project.ext.bintrayRepo = 'maven'
 project.ext.bintrayVcsUrl = 'https://github.com/senx/warp10-ext-pcap'
-project.ext.bintrayLicenses = [ 'Apache 2.0' ]
+project.ext.bintrayLicenses = [ 'Apache-2.0' ]
 
 //
 // GnuPG configuration for signing module
