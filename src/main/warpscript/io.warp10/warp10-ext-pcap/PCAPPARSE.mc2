@@ -13,6 +13,7 @@ For the time being, the elements which can be parsed are the PCap fields from th
     'packet' 'Raw bytes of the captured packet.'
     'rechdr' 'Record header as a byte array.'
     'globalhdr' 'PCap file global header as a byte array.'
+    'content' 'Map of the various fields which were parsed.'
   }
   'examples' [
   ]
