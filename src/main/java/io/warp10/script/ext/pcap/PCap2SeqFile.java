@@ -18,13 +18,13 @@ import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.SequenceFile.CompressionType;
 import org.apache.hadoop.io.SequenceFile.Metadata;
 import org.apache.hadoop.io.compress.DefaultCodec;
-import org.junit.Test;
 
 /**
  * Converts a libpcap file into a SequenceFile of records
  */
 public class PCap2SeqFile {
   
+  private static final String OPTION_ONERROR_HALT = "onerror.halt";
   
   public static void convert(Configuration conf, Path inPath, Path outPath, boolean append) throws IOException {
     FileContext fc = FileContext.getFileContext(conf);
@@ -49,122 +49,142 @@ public class PCap2SeqFile {
         new Metadata(),
         flags,
         CreateOpts.blockSize(1024 * 100));
-        
-    boolean eof = false;
+      
+    Throwable error = null;
     
-    //
-    // Read Global pcap header (24 bytes)
-    //
+    try {
+      boolean eof = false;
+      boolean onerrorhalt = conf.getBoolean(OPTION_ONERROR_HALT, false);
 
-    byte[] globalHeader = new byte[24];
-    int len = in.read(globalHeader, 0, globalHeader.length);
-    
-    if (globalHeader.length != len) {
-      throw new IOException("Error reading global header.");
-    }
-    
-    // Check byte ordering
-    //0xa1b2c3d4 for us
-    //0xa1b23c4d for ns
-    
-    boolean nativeOrdering = (byte) 0xa1 == globalHeader[0];
+      //
+      // Read Global pcap header (24 bytes)
+      //
 
-    //
-    // Extract snaplen
-    //
-    
-    int snaplen = 0;
-    
-    if (nativeOrdering) {
-      for (int i = 16; i < 20; i++) {
-        snaplen <<= 8;
-        snaplen |= globalHeader[i] & 0xFF;
+      byte[] globalHeader = new byte[24];
+      int len = in.read(globalHeader, 0, globalHeader.length);
+      
+      if (globalHeader.length != len) {
+        if (onerrorhalt) {
+          throw new IOException("Error reading global header.");
+        } else {
+          eof = true;
+        }
       }
-    } else {
-      for (int i = 19; i >= 16; i--) {
-        snaplen <<= 8;
-        snaplen |= globalHeader[i] & 0xFF;        
-      }
-    }
+      
+      // Check byte ordering
+      //0xa1b2c3d4 for us
+      //0xa1b23c4d for ns
+      
+      boolean nativeOrdering = (byte) 0xa1 == globalHeader[0];
 
-    byte[] recordHeader = new byte[16];
-    byte[] buf = new byte[snaplen];
-    
-    int offset = 0;
-    
-    while(!eof) {
-      
       //
-      // Read record header
+      // Extract snaplen
       //
       
-      len = in.read(recordHeader, 0, recordHeader.length);
-      
-      if (len < 0) {
-        eof = true;
-        continue;
-      }
-      
-      if (recordHeader.length != len) {
-        throw new IOException("Error reading record header.");        
-      }
-      
-      //
-      // Extract packet data length
-      //
-      
-      int pktlen = 0;
+      int snaplen = 0;
       
       if (nativeOrdering) {
-        for (int i = 8; i < 12; i++) {
-          pktlen <<= 8;
-          pktlen |= recordHeader[i] & 0xFF;
+        for (int i = 16; i < 20; i++) {
+          snaplen <<= 8;
+          snaplen |= globalHeader[i] & 0xFF;
         }
       } else {
-        for (int i = 11; i >= 8; i--) {
-          pktlen <<= 8;
-          pktlen |= recordHeader[i] & 0xFF;        
+        for (int i = 19; i >= 16; i--) {
+          snaplen <<= 8;
+          snaplen |= globalHeader[i] & 0xFF;        
         }
       }
-  
-      // Read a full frame
+
+      byte[] recordHeader = new byte[16];
+      byte[] buf = new byte[snaplen];
       
-      len = offset;
-      
-      while(len < pktlen) {
-        int read = in.read(buf, offset, pktlen - offset);
-    
-        if (read < 0) {
+      int offset = 0;
+          
+      while(!eof) {
+        
+        //
+        // Read record header
+        //
+        
+        len = in.read(recordHeader, 0, recordHeader.length);
+        
+        if (len < 0) {
           eof = true;
+          continue;
+        }
+        
+        if (recordHeader.length != len) {
+          if (onerrorhalt) {
+            throw new IOException("Error reading record header.");
+          } else {
+            eof = true;
+            break;
+          }
+        }
+        
+        //
+        // Extract packet data length
+        //
+        
+        int pktlen = 0;
+        
+        if (nativeOrdering) {
+          for (int i = 8; i < 12; i++) {
+            pktlen <<= 8;
+            pktlen |= recordHeader[i] & 0xFF;
+          }
+        } else {
+          for (int i = 11; i >= 8; i--) {
+            pktlen <<= 8;
+            pktlen |= recordHeader[i] & 0xFF;        
+          }
+        }
+    
+        // Read a full frame
+        
+        len = offset;
+        
+        while(len < pktlen) {
+          int read = in.read(buf, offset, pktlen - offset);
+      
+          if (read < 0) {
+            eof = true;
+            break;
+          }
+      
+          offset += read;
+          len += read;
+        }
+
+        if (0 == len) {
           break;
         }
-    
-        offset += read;
-        len += read;
-      }
+              
+        //
+        // Reset offset
+        //
+        
+        offset = 0;
 
-      if (0 == len) {
-        break;
+        byte[] keybytes = Arrays.copyOf(globalHeader, globalHeader.length + recordHeader.length);
+        System.arraycopy(recordHeader, 0, keybytes, globalHeader.length, recordHeader.length);
+        
+        BytesWritable val = new BytesWritable(buf, pktlen);        
+        BytesWritable key = new BytesWritable(keybytes);
+        
+        sfwriter.append(key, val);
+      }      
+    } catch (IOException ioe) {
+      error = ioe;
+      throw ioe;
+    } finally {
+      if (null != sfwriter) {
+        try { sfwriter.close(); } catch (Exception e) {}
       }
-            
-      //
-      // Reset offset
-      //
-      
-      offset = 0;
-
-      byte[] keybytes = Arrays.copyOf(globalHeader, globalHeader.length + recordHeader.length);
-      System.arraycopy(recordHeader, 0, keybytes, globalHeader.length, recordHeader.length);
-      
-      BytesWritable val = new BytesWritable(buf, pktlen);        
-      BytesWritable key = new BytesWritable(keybytes);
-      
-      sfwriter.append(key, val);
+      if (null != in) {
+        try { in.close(); } catch (Exception e) {}
+      }
     }
-    
-    in.close();
-
-    sfwriter.close();
   }
   
   public static void main(String[] args) throws Exception {
@@ -173,27 +193,34 @@ public class PCap2SeqFile {
       // pcap names from stdin
       BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
       boolean first = true;
+            
       while(true) {
         String line = br.readLine();
         
         if (null == line) {
           break;
         }
-        
+                
         if (first) {
-          convert(new Configuration(), new Path(line), new Path(args[0]), !first);
+          convert(getConfig(), new Path(line), new Path(args[0]), !first);
           first = false;
         } else {
-          convert(new Configuration(), new Path(line), new Path(args[0]), !first);        
+          convert(getConfig(), new Path(line), new Path(args[0]), !first);        
         }
       }
       br.close();
     } else if (args.length > 2) {
       for (int i = 0; i < args.length - 1; i++) {
-        convert(new Configuration(), new Path(args[i]), new Path(args[args.length - 1]), i > 0);        
+        convert(getConfig(), new Path(args[i]), new Path(args[args.length - 1]), i > 0);        
       }
     } else {
-      convert(new Configuration(), new Path(args[0]), new Path(args[1]), false);
+      convert(getConfig(), new Path(args[0]), new Path(args[1]), false);
     } 
+  }
+  
+  private static Configuration getConfig() {
+    Configuration config = new Configuration();
+    config.setBoolean(OPTION_ONERROR_HALT, "true".equals(System.getProperty(OPTION_ONERROR_HALT)));
+    return config;
   }
 }
