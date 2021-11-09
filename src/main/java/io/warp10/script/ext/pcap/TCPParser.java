@@ -7,16 +7,16 @@ import java.util.Arrays;
 import java.util.Map;
 
 public class TCPParser {
-  public static int parse(Map<String,Object> fields, byte[] data, int offset, int len) {    
+  public static int parse(Map<String,Object> fields, byte[] data, int offset, int len) {
     if (offset < 0) {
       return offset;
     }
-    
+
     ByteBuffer bb = ByteBuffer.wrap(data, offset, len);
     bb.order(ByteOrder.BIG_ENDIAN);
-    
+
     int payload_offset = -1;
-    
+
     try {
       int src = bb.getShort() & 0xffff;
       fields.put(Fields.TCP_SRC, (long) src);
@@ -38,7 +38,7 @@ public class TCPParser {
       fields.put(Fields.TCP_FLAGS_R, (long) ((flags & 0x04) >> 2));
       fields.put(Fields.TCP_FLAGS_S, (long) ((flags & 0x02) >> 1));
       fields.put(Fields.TCP_FLAGS_F, (long) (flags & 0x01));
-      
+
       int window = bb.getShort() & 0xffff;
       fields.put(Fields.TCP_WINDOW, (long) window);
       int checksum = bb.getShort() & 0xffff;
@@ -47,17 +47,17 @@ public class TCPParser {
       fields.put(Fields.TCP_URGENT, (long) urgent);
 
       if (offset_reserved >> 4 > 5) {
-        fields.put(Fields.TCP_OPTIONS, Arrays.copyOfRange(data, bb.position(), bb.position() + ((offset_reserved >> 4) - 5) * 4 - 1));        
+        fields.put(Fields.TCP_OPTIONS, Arrays.copyOfRange(data, bb.position(), bb.position() + ((offset_reserved >> 4) - 5) * 4 - 1));
       }
-      
+
       if (offset + ((offset_reserved >> 4) - 5) * 4 < len) {
-        fields.put(Fields.TCP_PAYLOAD, Arrays.copyOfRange(data, offset + ((offset_reserved >> 4) - 5) * 4, offset + len - 1));
+        fields.put(Fields.TCP_PAYLOAD, Arrays.copyOfRange(data, offset + ((offset_reserved >> 4) - 5) * 4, offset + len));
         payload_offset = offset + ((offset_reserved >> 4) - 5) * 4;
       }
     } catch (BufferUnderflowException bue) {
       fields.put(Fields.TCP_UNDERFLOW, true);
-    }    
-    
+    }
+
     return payload_offset;
   }
 }

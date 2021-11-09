@@ -11,7 +11,7 @@ public class UDPParser {
     if (offset < 0) {
       return offset;
     }
-    
+
     ByteBuffer bb = ByteBuffer.wrap(data, offset, len);
     bb.order(ByteOrder.BIG_ENDIAN);
 
@@ -24,9 +24,9 @@ public class UDPParser {
       fields.put(Fields.UDP_LEN, (long) length);
       int checksum = bb.getShort() & 0xffff;
       fields.put(Fields.UDP_CHECKSUM, (long) checksum);
-      
+
       if (length > 8) {
-        fields.put(Fields.UDP_PAYLOAD, Arrays.copyOfRange(data, bb.position(), offset + len - 1));
+        fields.put(Fields.UDP_PAYLOAD, Arrays.copyOfRange(data, bb.position(), offset + len));
         return bb.position();
       } else {
         return -1;
@@ -34,7 +34,7 @@ public class UDPParser {
     } catch (BufferUnderflowException bue) {
       fields.put(Fields.UDP_UNDERFLOW, true);
     }
-    
-    return -1;    
+
+    return -1;
   }
 }
