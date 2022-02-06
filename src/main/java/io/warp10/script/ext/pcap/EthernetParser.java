@@ -1,3 +1,7 @@
+//
+//  Copyright 2018-2022  SenX S.A.S.
+//
+
 package io.warp10.script.ext.pcap;
 
 import java.nio.BufferUnderflowException;
@@ -89,7 +93,7 @@ public class EthernetParser {
         // Undefined
         //
       }
-    } catch (BufferUnderflowException bue) {
+    } catch (ArrayIndexOutOfBoundsException|BufferUnderflowException bue) {
       fields.put(Fields.ETHER_UNDERFLOW, true);
     }
 

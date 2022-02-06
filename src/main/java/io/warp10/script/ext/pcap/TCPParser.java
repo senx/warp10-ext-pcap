@@ -1,3 +1,7 @@
+//
+//  Copyright 2018-2022  SenX S.A.S.
+//
+
 package io.warp10.script.ext.pcap;
 
 import java.nio.BufferUnderflowException;
@@ -54,7 +58,7 @@ public class TCPParser {
         fields.put(Fields.TCP_PAYLOAD, Arrays.copyOfRange(data, offset + ((offset_reserved >> 4) - 5) * 4, offset + len));
         payload_offset = offset + ((offset_reserved >> 4) - 5) * 4;
       }
-    } catch (BufferUnderflowException bue) {
+    } catch (ArrayIndexOutOfBoundsException|BufferUnderflowException bue) {
       fields.put(Fields.TCP_UNDERFLOW, true);
     }
 

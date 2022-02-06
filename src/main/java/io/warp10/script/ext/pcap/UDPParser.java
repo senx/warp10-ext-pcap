@@ -1,3 +1,7 @@
+//
+//  Copyright 2018-2022  SenX S.A.S.
+//
+
 package io.warp10.script.ext.pcap;
 
 import java.nio.BufferUnderflowException;
@@ -31,7 +35,7 @@ public class UDPParser {
       } else {
         return -1;
       }
-    } catch (BufferUnderflowException bue) {
+    } catch (ArrayIndexOutOfBoundsException|BufferUnderflowException bue) {
       fields.put(Fields.UDP_UNDERFLOW, true);
     }
 

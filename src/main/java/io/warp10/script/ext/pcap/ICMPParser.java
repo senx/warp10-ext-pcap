@@ -1,3 +1,7 @@
+//
+//  Copyright 2018-2022  SenX S.A.S.
+//
+
 package io.warp10.script.ext.pcap;
 
 import java.nio.BufferUnderflowException;
@@ -10,10 +14,10 @@ public class ICMPParser {
     if (offset < 0) {
       return offset;
     }
-    
+
     ByteBuffer bb = ByteBuffer.wrap(data, offset, len);
     bb.order(ByteOrder.BIG_ENDIAN);
-    
+
     try {
       int type = bb.get() & 0xff;
       fields.put(Fields.ICMP_TYPE, type);
@@ -26,7 +30,7 @@ public class ICMPParser {
     } catch (BufferUnderflowException bue) {
       fields.put(Fields.ICMP_UNDERFLOW, true);
     }
-    
+
     return -1;
 
   }
